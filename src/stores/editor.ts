@@ -11,7 +11,7 @@ import type { RecordItem, RecordType } from '@pages/editor/core/types/helper';
 import { BaseLayer, BasePage, GroupLayer, ViewData } from '@pages/editor/core/types/data';
 import remove from 'lodash/remove';
 import debounce from 'lodash/debounce';
-import { Toast } from '@douyinfe/semi-ui';
+import { toast } from '@douyinfe/semi-ui';
 
 // 素材类型
 export type MaterialTypes =
