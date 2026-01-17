@@ -8,7 +8,7 @@ const resolve = (url: string) => path.resolve(__dirname, url);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // 加载环境变量（新增：支持不同环境的.env文件）
+  // 加载环境变量
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
@@ -53,11 +53,17 @@ export default defineConfig(({ mode }) => {
             libDirectory: "",
             camel2DashComponentName: false,
           },
-          // 取消注释并配置semi-ui按需引入（示例修改）
+          // 修复：调整 Semi UI 按需引入配置（仅处理实际组件，排除 toast 等全局方法）
           {
             libName: '@douyinfe/semi-ui',
             libDirectory: 'es',
-            style: (name) => `@douyinfe/semi-ui/es/${name}/style/index.js`,
+            // 仅对真实组件做样式引入，跳过 toast/modal/notification 等全局方法
+            style: (name) => {
+              // 排除非组件类模块
+              const excludeList = ['toast', 'modal', 'notification', 'message'];
+              if (excludeList.includes(name)) return false;
+              return `@douyinfe/semi-ui/es/${name}/style`;
+            },
           },
         ],
       }),
@@ -69,7 +75,6 @@ export default defineConfig(({ mode }) => {
       preprocessorOptions: {
         less: {
           javascriptEnabled: true,
-          // 新增：全局注入less变量/混合（示例）
           additionalData: `@import "${resolve('./src/less/variables.less')}";`,
         },
       },
@@ -80,41 +85,39 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: "editorAssets/js/[name]-[hash].js",
           entryFileNames: "editorAssets/js/[name]-[hash].js",
           assetFileNames: "editorAssets/[ext]/[name]-[hash].[ext]",
-          // 新增：拆分公共依赖包（优化打包体积）
           manualChunks: {
             vendor: ['react', 'react-dom'],
             utils: ['lodash'],
+            // 新增：单独拆分 Semi UI 依赖（避免样式路径问题）
+            semi: ['@douyinfe/semi-ui'],
           },
         },
         input: {
           main: resolve("index.html"),
         },
+        // 可选：若仍有个别路径解析失败，可临时排除（不推荐长期使用）
+        // external: ['@douyinfe/semi-ui/es/toast/style/index.js'],
       },
       minify: "terser",
       terserOptions: {
         compress: {
-          drop_console: mode === "production", // 仅生产环境移除console（优化：开发环境保留）
+          drop_console: mode === "production",
           drop_debugger: mode === "production",
         },
       },
-      // 新增：指定输出目录（默认dist，可自定义）
       outDir: "dist",
-      // 新增：生产环境生成sourcemap（可选）
       sourcemap: mode === "production",
     },
-    // 新增：根据环境变量配置基础路径
     base: env.VITE_BASE_URL || "/",
     server: {
       host: "0.0.0.0",
-      port: Number(env.VITE_PORT) || 3004, // 从环境变量读取端口（新增）
-      open: true, // 启动后自动打开浏览器（新增）
-      cors: true, // 允许跨域（新增）
+      port: Number(env.VITE_PORT) || 3004,
+      open: true,
+      cors: true,
       proxy: {
         '/cgi-bin': {
-          target: env.VITE_API_BASE_URL || 'https://image.h5ds.com', // 从环境变量读取代理目标（新增）
+          target: env.VITE_API_BASE_URL || 'https://image.h5ds.com',
           changeOrigin: true,
-          // 新增：路径重写（如果需要）
-          // rewrite: (path) => path.replace(/^\/cgi-bin/, ''),
         },
         '/api': {
           target: env.VITE_API_BASE_URL || 'https://image.h5ds.com',
@@ -126,9 +129,8 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    // 新增：优化依赖预构建
     optimizeDeps: {
-      include: ['react', 'react-dom', 'lodash', '@icon-park/react'],
+      include: ['react', 'react-dom', 'lodash', '@icon-park/react', '@douyinfe/semi-ui'],
     },
   };
 });
