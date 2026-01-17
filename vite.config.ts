@@ -3,12 +3,9 @@ import path from "path";
 import react from "@vitejs/plugin-react";
 import vitePluginImp from "vite-plugin-imp";
 
-// 修复类型提示，封装路径解析函数
 const resolve = (url: string) => path.resolve(__dirname, url);
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // 加载环境变量
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
@@ -53,17 +50,17 @@ export default defineConfig(({ mode }) => {
             libDirectory: "",
             camel2DashComponentName: false,
           },
-          // 修复：调整 Semi UI 按需引入配置（仅处理实际组件，排除 toast 等全局方法）
           {
             libName: '@douyinfe/semi-ui',
             libDirectory: 'es',
-            // 仅对真实组件做样式引入，跳过 toast/modal/notification 等全局方法
             style: (name) => {
-              // 排除非组件类模块
-              const excludeList = ['toast', 'modal', 'notification', 'message'];
+              // 彻底排除 toast 及其他全局方法
+              const excludeList = ['toast', 'modal', 'notification', 'message', 'confirm'];
               if (excludeList.includes(name)) return false;
               return `@douyinfe/semi-ui/es/${name}/style`;
             },
+            // 关键：跳过 toast 等非组件模块的按需引入解析
+            ignore: ['toast', 'modal', 'notification', 'message'],
           },
         ],
       }),
@@ -88,15 +85,17 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             vendor: ['react', 'react-dom'],
             utils: ['lodash'],
-            // 新增：单独拆分 Semi UI 依赖（避免样式路径问题）
             semi: ['@douyinfe/semi-ui'],
           },
         },
         input: {
           main: resolve("index.html"),
         },
-        // 可选：若仍有个别路径解析失败，可临时排除（不推荐长期使用）
-        // external: ['@douyinfe/semi-ui/es/toast/style/index.js'],
+        // 兜底：显式排除错误的 toast 路径（临时应急）
+        external: [
+          '@douyinfe/semi-ui/es/toast',
+          '@douyinfe/semi-ui/es/toast/style/index.js'
+        ],
       },
       minify: "terser",
       terserOptions: {
@@ -131,6 +130,8 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ['react', 'react-dom', 'lodash', '@icon-park/react', '@douyinfe/semi-ui'],
+      // 预构建 Semi UI，避免路径解析问题
+      exclude: ['@douyinfe/semi-ui/es/toast'],
     },
   };
 });
